@@ -1,0 +1,8 @@
+import sys
+if sys.version_info[0:2] != (3, 9):
+    raise Exception('Requires python 3.9')
+
+imageio==2.23.0
+Pillow==9.5.0
+pygame==2.1.2
+ttkbootstrap==1.10.0
