@@ -11,11 +11,10 @@ from ttkbootstrap.constants import *
 from ttkbootstrap.dialogs import Dialog
 from ttkbootstrap.scrolled import ScrolledText
 
-from PIL import ImageTk, Image, ImageOps
+from PIL import ImageTk, Image
 import imageio.v3 as iio
 from math import sqrt
 import threading
-import time
 import sys
 
 
@@ -117,29 +116,16 @@ class VideoModal(Dialog):
 
         # Thread function
         def stream(label):
-            # Time in frame, sec
-            if self.meta['fps'] >= 24:
-                fsec = 1 / 24
-            else:
-                fsec = 1 / self.meta['fps']
-            # Loop start time
-            now = time.time()
             for frame in iio.imiter(self.path, plugin="pyav"):
-                then = time.time()
-                if (then - now) < fsec:
-                    time.sleep(fsec - (then - now))
-                now = then
-                # Frame to image convert
                 image = Image.fromarray(frame)
-                # Кesize the image if necessary
                 if toresize:
                     w = sizes[0]
                     h = sizes[1]
-                    image = ImageOps.contain(image, (w, h), Image.NEAREST)
+                    image = image.resize((w, h), Image.Resampling.LANCZOS)
                 try:
-                    imgtk = ImageTk.PhotoImage(image)
-                    label.config(image=imgtk)
-                    label.image = imgtk
+                    photo_image = ImageTk.PhotoImage(image)
+                    label.config(image=photo_image)
+                    label.image = photo_image
                 except:
                     sys.exit(1)
 
@@ -189,21 +175,21 @@ class ImageModal(Dialog):
             else:
                 ratio = round((window_h / image_h), 6)
             # Calculating new image size
-            w = round(image_w * ratio)
-            h = round(image_h * ratio)
-            image = image.resize((w, h), Image.Resampling.LANCZOS)
+            width = round(image_w * ratio)
+            height = round(image_h * ratio)
+            image = image.resize((width, height), Image.Resampling.LANCZOS)
 
-        imgtk = ImageTk.PhotoImage(image)
-        text = f"Original size: {image_w} x{image_h} px"
+        photo_image = ImageTk.PhotoImage(image)
+        label_text = f"Original size: {image_w} x{image_h} px"
 
         label = ttk.Label(
             master,
-            text=text,
-            image=imgtk,
+            text=label_text,
+            image=photo_image,
             compound=BOTTOM,
             font=("Sans-serif", 10, "bold")
         )
-        label.image = imgtk
+        label.image = photo_image
         label.pack()
 
     def create_buttonbox(self, master):

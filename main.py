@@ -7,6 +7,8 @@ from ttkbootstrap.constants import *
 from ttkbootstrap.style import Bootstyle
 from ttkbootstrap.scrolled import ScrolledFrame
 
+from async_tkinter_loop import async_handler, async_mainloop
+
 from controllers import *
 from config.gui import *
 
@@ -24,11 +26,7 @@ class AppWindow(ttk.Frame):
         self.image_path = ttk.StringVar(value="Not selected yet...")
         self.video_path = ttk.StringVar(value="Not selected yet...")
 
-        # Status flag
         self.started = False
-        self.stopped = True
-
-        # Coroutine instance
         self.app = None
 
         self.photoimages = []
@@ -203,56 +201,46 @@ class AppWindow(ttk.Frame):
         self.status_label.pack(side=LEFT, padx=10, pady=(8, 12))
 
 
-    def coroutine(self, start):
-        """ Launching the coroutine.
+    @async_handler
+    async def stopping_process(self):
+        """ Call to controller to stop process.
         """
-        self.app = Application(data=start)
-        self.status_label['text'] += self.app.run()
-        # Load the current process status
-        for status in self.app.get_status():
-            self.status_label['text'] += status
-
-
-    def starting_process(self):
-        """ Call to controller to start process.
-        """
-        if self.started == True or self.stopped == False:
+        if self.started == False:
             return
 
-        if start := StartingController.main():
+        if stopping := StoppingController.main():
+            self.status_label['text'] += await self.app.stop()
+            self.started = False
+        else:
             self.started = True
-            self.stopped = False
+
+
+    @async_handler
+    async def starting_process(self):
+        """ Call to controller to start process.
+        """
+        if self.started == True:
+            return
+
+        if starting := StartingController.main():
+            self.started = True
             self.status_label['text'] = "Launching..."
             # Load image widget
-            self.image_path.set(start[0])
+            self.image_path.set(starting[0])
             self.image_widget.pack(fill=X, padx=(7, 11), pady=10)
             # Load video widget
-            self.video_path.set(start[1])
+            self.video_path.set(starting[1])
             self.video_widget.pack(fill=X, padx=(7, 11), pady=10)
             # Load execution status widget
             self.execstatus.pack(fill=X, padx=(7, 11), pady=10)
-            # Running a coroutine on a new thread
-            thr = threading.Thread(target=self.coroutine, args=(start,))
-            thr.setDaemon(True)
-            thr.start()
+            # Run the app and load starting data
+            self.app = Application(data=starting)
+            self.status_label['text'] += await self.app.run()
+            # Load the current process status
+            async for status in self.app.get_status():
+                self.status_label['text'] += status
         else:
             self.started = False
-            self.stopped = True
-
-
-    def stopping_process(self):
-        """ Call to controller to stop process.
-        """
-        if self.started == False or self.stopped == True:
-            return
-
-        if stop := StoppingController.main():
-            self.status_label['text'] += self.app.stop()
-            self.started = False
-            self.stopped = True
-        else:
-            self.started = True
-            self.stopped = False
 
 
     def add_video(self):
@@ -289,6 +277,7 @@ if __name__ == "__main__":
         resizable=(False, True)
     )
     AppWindow(app)
-    app.mainloop()
+    async_mainloop(app)
+    # app.mainloop()
 
 
